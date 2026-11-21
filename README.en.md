@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/icon.png" width="96" alt="sbg6"></p>
+
 # Sound Blaster G6 for Linux
 
 [Русский](README.md) · **English**
