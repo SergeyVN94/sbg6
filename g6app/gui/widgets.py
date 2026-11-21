@@ -183,6 +183,7 @@ class ValueSlider(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(12)
         self.slider = QSlider(Qt.Orientation.Horizontal)
+        self.slider.setMinimumHeight(26)
         self.slider.setRange(0, round((maximum - minimum) * self._scale))
         self.slider.setPageStep(max(1, round(0.1 * (maximum - minimum) * self._scale)))
         layout.addWidget(self.slider, 1)
@@ -251,6 +252,53 @@ class SegmentedControl(QFrame):
             self.changed.emit(value)
 
 
+class ColorSwatch(QAbstractButton):
+    """A plain colour chip: clicking applies the colour immediately."""
+
+    def __init__(self, color: tuple[int, int, int], parent=None):
+        super().__init__(parent)
+        self._color = tuple(int(c) & 0xFF for c in color)
+        self._selected = False
+        self._hover = False
+        self.setFixedSize(30, 30)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        r, g, b = self._color
+        self.setToolTip(f"#{r:02x}{g:02x}{b:02x}")
+
+    def color(self) -> tuple[int, int, int]:
+        return self._color
+
+    def set_selected(self, selected: bool) -> None:
+        if selected != self._selected:
+            self._selected = selected
+            self.update()
+
+    def enterEvent(self, _event) -> None:
+        self._hover = True
+        self.update()
+
+    def leaveEvent(self, _event) -> None:
+        self._hover = False
+        self.update()
+
+    def paintEvent(self, _event) -> None:
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        rect = QRectF(6, 6, 18, 18)
+        if self._selected:
+            painter.setPen(QPen(QColor("#ffffff"), 2))
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.drawEllipse(QRectF(3.5, 3.5, 23, 23))
+        elif self._hover:
+            painter.setPen(QPen(QColor("#ffffff66"), 1.5))
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.drawEllipse(QRectF(4.25, 4.25, 21.5, 21.5))
+        painter.setPen(QPen(QColor("#00000040"), 1))
+        painter.setBrush(QColor(*self._color))
+        painter.drawEllipse(rect)
+        painter.end()
+
+
 class ColorButton(QPushButton):
     colorChanged = Signal(tuple)
 
@@ -264,7 +312,7 @@ class ColorButton(QPushButton):
 
     def _refresh(self) -> None:
         r, g, b = self._color
-        border = "#ffffff" if (r * 299 + g * 587 + b * 114) / 1000 < 40 else "#00000033"
+        border = "#ffffff" if (r * 299 + g * 587 + b * 114) / 1000 < 40 else "#26000000"
         self.setStyleSheet(
             f"QPushButton {{ background: rgb({r},{g},{b}); border: 2px solid {border};"
             " border-radius: 17px; }"

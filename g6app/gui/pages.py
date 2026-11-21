@@ -28,6 +28,7 @@ from ..state import State
 from .widgets import (
     Card,
     ColorButton,
+    ColorSwatch,
     EQCurve,
     SegmentedControl,
     ToggleSwitch,
@@ -635,26 +636,34 @@ class LightingPage(QWidget):
         card.header.addWidget(self.toggle)
         self.toggle.toggled.connect(lambda value: self.win.set_lighting_enabled(value))
 
-        row = QHBoxLayout()
-        row.setSpacing(10)
-        row.addWidget(_mini_label("Цвет"))
+        custom_row = QHBoxLayout()
+        custom_row.setSpacing(10)
+        custom_row.addWidget(_mini_label("Свой цвет"))
         self.color = ColorButton()
-        self.color.colorChanged.connect(lambda rgb: self.win.set_lighting_color(tuple(int(c) for c in rgb)))
-        row.addWidget(self.color)
+        self.color.setToolTip("Открыть палитру и выбрать произвольный цвет")
+        self.color.colorChanged.connect(self._apply_custom)
+        custom_row.addWidget(self.color)
+        self.hex_label = QLabel("")
+        self.hex_label.setObjectName("muted")
+        self.hex_label.setMinimumWidth(80)
+        custom_row.addWidget(self.hex_label)
+        custom_row.addStretch(1)
+        card.add_layout(custom_row)
+
+        presets_row = QHBoxLayout()
+        presets_row.setSpacing(10)
+        presets_row.addWidget(_mini_label("Готовые"))
+        self.swatches: list[ColorSwatch] = []
         for rgb in (
             (255, 40, 40), (255, 140, 0), (255, 220, 0), (60, 220, 120),
             (0, 200, 255), (60, 110, 255), (170, 80, 255), (255, 255, 255),
         ):
-            swatch = ColorButton(rgb)
-            swatch.colorChanged.connect(
-                lambda value: (
-                    self.color.set_color(value),
-                    self.win.set_lighting_color(tuple(int(c) for c in value)),
-                )
-            )
-            row.addWidget(swatch)
-        row.addStretch(1)
-        card.add_layout(row)
+            swatch = ColorSwatch(rgb)
+            swatch.clicked.connect(lambda _=False, s=swatch: self._apply_swatch(s.color()))
+            self.swatches.append(swatch)
+            presets_row.addWidget(swatch)
+        presets_row.addStretch(1)
+        card.add_layout(presets_row)
 
         note = QLabel(
             "G6 поддерживает статический цвет и включение/выключение кольца. "
@@ -670,12 +679,28 @@ class LightingPage(QWidget):
         outer.setContentsMargins(0, 0, 0, 0)
         outer.addWidget(_scroll(body))
 
+    def _apply_swatch(self, color: tuple[int, int, int]) -> None:
+        self._refresh_color_widgets(color)
+        self.win.set_lighting_color(color)
+
+    def _apply_custom(self, color: tuple[int, int, int]) -> None:
+        color = tuple(int(c) & 0xFF for c in color)
+        self._refresh_color_widgets(color)
+        self.win.set_lighting_color(color)
+
+    def _refresh_color_widgets(self, color: tuple[int, int, int]) -> None:
+        color = tuple(int(c) & 0xFF for c in color)
+        self.color.set_color(color)
+        self.hex_label.setText(f"#{color[0]:02x}{color[1]:02x}{color[2]:02x}")
+        for swatch in self.swatches:
+            swatch.set_selected(swatch.color() == color)
+
     def sync(self, event: dict, state: State) -> None:
         if event.get("type") in ("lighting", "snapshot"):
             self.toggle.blockSignals(True)
             self.toggle.setChecked(state.lighting_enabled)
             self.toggle.blockSignals(False)
-            self.color.set_color(state.lighting_color)
+            self._refresh_color_widgets(state.lighting_color)
 
 
 class SettingsPage(QWidget):

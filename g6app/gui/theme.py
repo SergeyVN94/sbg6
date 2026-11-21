@@ -225,6 +225,9 @@ QComboBox QAbstractItemView {{
 }}
 
 /* --------------------------------------------------------------- sliders -- */
+QSlider:horizontal {{
+    min-height: 26px;
+}}
 QSlider::groove:horizontal {{
     height: 6px;
     background: #2a323d;
@@ -239,7 +242,7 @@ QSlider::handle:horizontal {{
     border: none;
     width: 16px;
     height: 16px;
-    margin: -6px 0;
+    margin: -5px 0;
     border-radius: 8px;
 }}
 QSlider::handle:horizontal:hover {{
