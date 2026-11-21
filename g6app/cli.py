@@ -12,15 +12,13 @@ from .device import (
     FAMILY_DECODER,
     FAMILY_PLAYBACK,
     FAMILY_RECORDING,
+    G6,
     OUTPUT_HEADPHONES,
     OUTPUT_SPEAKERS,
-    G6,
     G6Error,
     describe_permissions,
-    find_hidraw,
 )
 from .state import (
-    Controller,
     State,
     apply_state,
     delete_profile,
@@ -64,8 +62,12 @@ def _eq_preset(name: str) -> F.EqPreset:
 
 
 def _print_status(state: State) -> None:
-    print(f"Sound BlasterX G6   прошивка {state.firmware or '?'}   выход: {OUTPUT_NAMES.get(state.output, state.output)}")
-    print(f"  SBX: {_fmt_bool(state.sbx):4}  Scout Mode: {_fmt_bool(state.scout):4}  Direct: {_fmt_bool(state.direct)}")
+    output = OUTPUT_NAMES.get(state.output, state.output)
+    print(f"Sound BlasterX G6   прошивка {state.firmware or '?'}   выход: {output}")
+    print(
+        f"  SBX: {_fmt_bool(state.sbx):4}  Scout Mode: {_fmt_bool(state.scout):4}"
+        f"  Direct: {_fmt_bool(state.direct)}"
+    )
     print()
     for key, title, toggle, level, _ in F.EFFECTS:
         on = state.get(FAMILY_PLAYBACK, toggle) >= 0.5
@@ -78,7 +80,9 @@ def _print_status(state: State) -> None:
             extra = f"  дистанция: {state.get(FAMILY_PLAYBACK, F.PLAYBACK_SURROUND_DISTANCE):.0f} см"
         print(f"  {title:14} {_fmt_bool(on):4} {_pct(value)}{extra}")
     print()
-    bands = " ".join(f"{label}:{gain:+.1f}" for label, gain in zip(F.EQ_LABELS, state.eq_bands()))
+    bands = " ".join(
+        f"{label}:{gain:+.1f}" for label, gain in zip(F.EQ_LABELS, state.eq_bands(), strict=False)
+    )
     print(f"  EQ {_fmt_bool(state.eq_enabled())}  preamp {_db(state.preamp())}  {bands}")
     print()
     print(
@@ -87,7 +91,7 @@ def _print_status(state: State) -> None:
         f"буст {state.mic_boost} дБ  AEC {_fmt_bool(state.get(FAMILY_RECORDING, F.REC_AEC) >= 0.5)}"
     )
     print(f"  DAC-фильтр: {DAC_NAMES.get(state.dac_filter, state.dac_filter)}")
-    color = "#%02x%02x%02x" % state.lighting_color
+    color = "#{:02x}{:02x}{:02x}".format(*state.lighting_color)
     print(f"  Подсветка: {_fmt_bool(state.lighting_enabled)} {color}")
 
 
@@ -108,7 +112,7 @@ def _state_json(state: State) -> dict:
         "equalizer": {
             "enabled": state.eq_enabled(),
             "preamp": state.preamp(),
-            "bands": dict(zip(F.EQ_LABELS, state.eq_bands())),
+            "bands": dict(zip(F.EQ_LABELS, state.eq_bands(), strict=False)),
         },
         "recording": {
             "voice_clarity": state.voice_clarity,
@@ -206,12 +210,12 @@ def cmd_eq(args) -> int:
         if args.preset:
             preset = _eq_preset(args.preset)
             device.write_feature(FAMILY_PLAYBACK, F.PLAYBACK_EQ_PREAMP, preset.preamp)
-            for band, gain in zip(F.PLAYBACK_EQ_BANDS, preset.bands):
+            for band, gain in zip(F.PLAYBACK_EQ_BANDS, preset.bands, strict=False):
                 device.write_feature(FAMILY_PLAYBACK, band, gain)
             print(f"Пресет «{preset.title}» применён")
         if args.bands:
             values = _parse_bands(args.bands)
-            for band, gain in zip(F.PLAYBACK_EQ_BANDS, values):
+            for band, gain in zip(F.PLAYBACK_EQ_BANDS, values, strict=False):
                 device.write_feature(FAMILY_PLAYBACK, band, gain)
         if args.preamp is not None:
             device.write_feature(FAMILY_PLAYBACK, F.PLAYBACK_EQ_PREAMP, args.preamp)
@@ -337,7 +341,7 @@ def cmd_dump(args) -> int:
     with _connect(args) as device:
         out = {}
         for family in (FAMILY_PLAYBACK, FAMILY_RECORDING, FAMILY_DECODER):
-            for feature in range(0x00, 0x40):
+            for feature in range(0x40):
                 value = device.read_feature(family, feature, timeout=0.2)
                 if value:
                     out[feature_key(family, feature)] = value
@@ -433,7 +437,12 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-    if getattr(args, "command", None) == "profile" and args.action in ("save", "load", "delete") and not args.name:
+    is_profile_write = getattr(args, "command", None) == "profile" and args.action in (
+        "save",
+        "load",
+        "delete",
+    )
+    if is_profile_write and not args.name:
         parser.error("укажите имя профиля")
     try:
         return args.func(args)

@@ -31,8 +31,8 @@ import select
 import struct
 import threading
 import time
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
-from typing import Callable, Iterable
 
 VENDOR_ID = 0x041E
 PRODUCT_ID = 0x3256
@@ -63,12 +63,11 @@ class Frame:
     payload: bytes
 
     @classmethod
-    def decode(cls, data: bytes) -> "Frame | None":
+    def decode(cls, data: bytes) -> Frame | None:
         if len(data) < 3 or data[0] != MAGIC:
             return None
         length = data[2]
-        if length > REPORT_LEN - 3:
-            length = REPORT_LEN - 3
+        length = min(length, REPORT_LEN - 3)
         return cls(data[1], bytes(data[3 : 3 + length]))
 
     def encode(self) -> bytes:
@@ -95,7 +94,7 @@ def find_hidraw() -> str | None:
     for node in sorted(glob.glob("/sys/class/hidraw/hidraw*")):
         uevent = os.path.join(node, "device", "uevent")
         try:
-            with open(uevent, "r", encoding="ascii", errors="replace") as fh:
+            with open(uevent, encoding="ascii", errors="replace") as fh:
                 text = fh.read()
         except OSError:
             continue
@@ -113,7 +112,7 @@ def find_hidraw() -> str | None:
 def find_card_index() -> int | None:
     """ALSA card index of the G6, if the snd-usb-audio driver bound it."""
     try:
-        with open("/proc/asound/cards", "r", encoding="utf-8", errors="replace") as fh:
+        with open("/proc/asound/cards", encoding="utf-8", errors="replace") as fh:
             lines = fh.read().splitlines()
     except OSError:
         return None
@@ -170,7 +169,7 @@ class G6:
 
     # -- lifecycle ---------------------------------------------------------
 
-    def open(self) -> "G6":
+    def open(self) -> G6:
         if self._fd is not None:
             return self
         if not self.path:
@@ -199,7 +198,7 @@ class G6:
             finally:
                 self._fd = None
 
-    def __enter__(self) -> "G6":
+    def __enter__(self) -> G6:
         return self.open()
 
     def __exit__(self, *exc_info) -> None:
@@ -308,7 +307,8 @@ class G6:
         time.sleep(0.005)  # ensure no stale frame matches the new request
         self.send(cmd, payload)
         if reply is None:
-            reply = lambda f: f.cmd == 0x02 and bool(f.payload) and f.payload[0] == (cmd & 0xFF)
+            def reply(f):
+                return f.cmd == 0x02 and bool(f.payload) and f.payload[0] == (cmd & 0xFF)
         return self.wait_for(reply, since=mark, timeout=timeout)
 
     # -- generic feature access -------------------------------------------
@@ -466,7 +466,7 @@ class G6:
         )
         if frame is not None:
             # payload: 0b 01 00 01 01 a b g r
-            a, b, g, r = frame.payload[5:9]
+            _a, b, g, r = frame.payload[5:9]
             color = (r, g, b)
         if enabled is None and color is None:
             return None

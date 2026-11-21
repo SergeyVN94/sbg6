@@ -1,0 +1,16 @@
+[project]
+name = "sbg6"
+version = "0.1.0"
+description = "Sound BlasterX G6 control app for Linux (SBX, EQ, mixer, lighting)"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.scripts]
+g6 = "g6app.cli:main"
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

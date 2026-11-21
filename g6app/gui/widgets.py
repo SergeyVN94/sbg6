@@ -119,7 +119,7 @@ class ToggleSwitch(QAbstractButton):
 
     offset = Property(float, get_offset, set_offset)
 
-    def setChecked(self, checked: bool) -> None:  # noqa: N802 - Qt API
+    def setChecked(self, checked: bool) -> None:
         super().setChecked(checked)
         self._offset = 1.0 if checked else 0.0
         if self._animation.state() != QPropertyAnimation.State.Running:

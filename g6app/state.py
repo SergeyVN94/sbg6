@@ -14,11 +14,10 @@ from . import features as F
 from .device import (
     FAMILY_DECODER,
     FAMILY_PLAYBACK,
-    FAMILY_RECORDING,
     G6,
     OUTPUT_HEADPHONES,
-    G6Error,
     Frame,
+    G6Error,
 )
 
 CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "sbg6"
@@ -87,7 +86,7 @@ class State:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> "State":
+    def from_dict(cls, data: dict) -> State:
         state = cls()
         for key, value in (data.get("values") or {}).items():
             try:
@@ -426,7 +425,7 @@ class Controller:
     def apply_eq_preset(self, preset: F.EqPreset) -> None:
         self.device.write_feature(FAMILY_PLAYBACK, F.PLAYBACK_EQ_PREAMP, preset.preamp)
         self._feature_event(FAMILY_PLAYBACK, F.PLAYBACK_EQ_PREAMP, preset.preamp)
-        for band, gain in zip(F.PLAYBACK_EQ_BANDS, preset.bands):
+        for band, gain in zip(F.PLAYBACK_EQ_BANDS, preset.bands, strict=False):
             self.device.write_feature(FAMILY_PLAYBACK, band, gain)
             self._feature_event(FAMILY_PLAYBACK, band, gain)
 

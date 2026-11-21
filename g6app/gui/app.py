@@ -10,8 +10,8 @@ import threading
 import time
 from pathlib import Path
 
-from PySide6.QtCore import QObject, QSize, Qt, QTimer, Signal
-from PySide6.QtGui import QAction, QColor, QIcon, QPainter, QPixmap
+from PySide6.QtCore import QObject, Qt, QTimer, Signal
+from PySide6.QtGui import QColor, QIcon, QKeySequence, QPainter, QPixmap, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
     QButtonGroup,
@@ -30,9 +30,9 @@ from PySide6.QtWidgets import (
 from .. import features as F
 from ..device import (
     FAMILY_PLAYBACK,
+    G6,
     OUTPUT_HEADPHONES,
     OUTPUT_SPEAKERS,
-    G6,
     G6Error,
     find_card_index,
 )
@@ -40,11 +40,16 @@ from ..mixer import Mixer
 from ..state import (
     Controller,
     State,
-    delete_profile as delete_profile_file,
     list_profiles,
-    load_last_state,
-    load_profile as load_profile_file,
     save_last_state,
+)
+from ..state import (
+    delete_profile as delete_profile_file,
+)
+from ..state import (
+    load_profile as load_profile_file,
+)
+from ..state import (
     save_profile as save_profile_file,
 )
 from . import theme
@@ -375,6 +380,7 @@ class MainWindow(QMainWindow):
         self.status(self.tr("Готово"))
 
         self._build_tray()
+        QShortcut(QKeySequence.StandardKey.Quit, self, activated=self.quit)
 
     def _build_tray(self) -> None:
         self.tray = QSystemTrayIcon(app_icon(), self)
@@ -426,8 +432,8 @@ class MainWindow(QMainWindow):
         self.raise_()
         self.activateWindow()
 
-    def closeEvent(self, event) -> None:  # noqa: N802 - Qt API
-        if self.tray.isVisible():
+    def closeEvent(self, event) -> None:
+        if self.tray.isVisible() and QSystemTrayIcon.isSystemTrayAvailable():
             event.ignore()
             self.hide()
             self.status("Свёрнуто в трей")
@@ -575,7 +581,7 @@ class MainWindow(QMainWindow):
         self.pending.clear()
         self.begin_edit(0.5)
         family = FAMILY_PLAYBACK
-        payload = list(zip(F.PLAYBACK_EQ_BANDS, bands))
+        payload = list(zip(F.PLAYBACK_EQ_BANDS, bands, strict=False))
         if preamp is not None:
             payload.insert(0, (F.PLAYBACK_EQ_PREAMP, preamp))
         for feature, value in payload:
@@ -585,7 +591,7 @@ class MainWindow(QMainWindow):
     def apply_preset(self, preset: F.EqPreset) -> None:
         self.pending.clear()
         self.begin_edit(1.0)
-        for band, gain in zip(F.PLAYBACK_EQ_BANDS, preset.bands):
+        for band, gain in zip(F.PLAYBACK_EQ_BANDS, preset.bands, strict=False):
             self.state.values[(FAMILY_PLAYBACK, band)] = gain
         self.state.values[(FAMILY_PLAYBACK, F.PLAYBACK_EQ_PREAMP)] = preset.preamp
         self._submit(lambda: self._apply_preset(preset))
@@ -680,12 +686,19 @@ class MainWindow(QMainWindow):
     def set_autostart(self, enabled: bool) -> None:
         action = "enable" if enabled else "disable"
         try:
-            subprocess.run(
+            result = subprocess.run(
                 ["systemctl", "--user", action, "sbg6-restore.service"],
                 check=False,
                 capture_output=True,
+                text=True,
                 timeout=10,
             )
+            if result.returncode != 0:
+                self.status(
+                    "Юнит sbg6-restore.service не установлен — запустите ./install.sh",
+                    error=True,
+                )
+                return
             if enabled:
                 subprocess.run(
                     ["systemctl", "--user", "start", "sbg6-restore.service"],

@@ -195,7 +195,7 @@ class Mixer:
         self._handle = ctypes.c_void_p()
         self._controls: list[Control] = []
 
-    def __enter__(self) -> "Mixer":
+    def __enter__(self) -> Mixer:
         self.open()
         return self
 
@@ -256,14 +256,15 @@ class Mixer:
                 for i in range(max(0, count)):
                     if lib.snd_mixer_selem_get_enum_item_name(elem, i, 64, buf) == 0:
                         control.enum_items.append(buf.value.decode("utf-8", "replace"))
-            if control.playback:
+            for channel, getter, attribute in (
+                (control.playback, lib.snd_mixer_selem_get_playback_volume_range, "playback_range"),
+                (control.capture, lib.snd_mixer_selem_get_capture_volume_range, "capture_range"),
+            ):
+                if not channel:
+                    continue
                 lo, hi = ctypes.c_long(), ctypes.c_long()
-                if lib.snd_mixer_selem_get_playback_volume_range(elem, ctypes.byref(lo), ctypes.byref(hi)) == 0:
-                    control.playback_range = (lo.value, hi.value)
-            if control.capture:
-                lo, hi = ctypes.c_long(), ctypes.c_long()
-                if lib.snd_mixer_selem_get_capture_volume_range(elem, ctypes.byref(lo), ctypes.byref(hi)) == 0:
-                    control.capture_range = (lo.value, hi.value)
+                if getter(elem, ctypes.byref(lo), ctypes.byref(hi)) == 0:
+                    setattr(control, attribute, (lo.value, hi.value))
             controls.append(control)
             elem = lib.snd_mixer_elem_next(elem)
         return controls

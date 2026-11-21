@@ -6,7 +6,7 @@ against the hardware (see docs/protocol.md).
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from .device import FAMILY_DECODER, FAMILY_PLAYBACK, FAMILY_RECORDING
 

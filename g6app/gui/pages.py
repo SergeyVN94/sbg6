@@ -18,10 +18,21 @@ from PySide6.QtWidgets import (
 )
 
 from .. import features as F
-from ..device import FAMILY_DECODER, FAMILY_PLAYBACK, FAMILY_RECORDING, OUTPUT_HEADPHONES, OUTPUT_SPEAKERS
+from ..device import (
+    FAMILY_PLAYBACK,
+    FAMILY_RECORDING,
+    OUTPUT_HEADPHONES,
+    OUTPUT_SPEAKERS,
+)
 from ..state import State
-from . import theme
-from .widgets import Card, ColorButton, EQCurve, SectionLabel, SegmentedControl, ToggleSwitch, ValueSlider
+from .widgets import (
+    Card,
+    ColorButton,
+    EQCurve,
+    SegmentedControl,
+    ToggleSwitch,
+    ValueSlider,
+)
 
 
 def _scroll(widget: QWidget) -> QScrollArea:
@@ -123,7 +134,9 @@ class PlaybackPage(QWidget):
         for index, (key, title, toggle, level, description) in enumerate(F.EFFECTS):
             card = EffectCard(key, title, description)
             card.toggled.connect(lambda value, k=key, t=toggle: self._effect_toggled(k, t, value))
-            card.levelChanged.connect(lambda value, l=level: self.win.set_feature(FAMILY_PLAYBACK, l, value))
+            card.levelChanged.connect(
+                lambda value, fid=level: self.win.set_feature(FAMILY_PLAYBACK, fid, value)
+            )
             grid.addWidget(card, index // 2, index % 2)
             self.effects[key] = card
 
@@ -225,7 +238,7 @@ class PlaybackPage(QWidget):
         raise KeyError(key)
 
     def _bands_changed(self, bands: list[float]) -> None:
-        for index, (band, gain) in enumerate(zip(F.PLAYBACK_EQ_BANDS, bands)):
+        for index, (band, gain) in enumerate(zip(F.PLAYBACK_EQ_BANDS, bands, strict=False)):
             if abs(gain - self._last_bands[index]) < 1e-6:
                 continue
             self._last_bands[index] = gain
@@ -341,7 +354,11 @@ class RecordingPage(QWidget):
         clarity = Card("Voice Clarity", "Шумоподавление и чистый голос в микрофоне")
         self.clarity_toggle = ToggleSwitch()
         clarity.header.addWidget(self.clarity_toggle)
-        self.clarity_toggle.toggled.connect(lambda value: self.win.set_feature(FAMILY_RECORDING, F.REC_NOISE_REDUCTION, 1.0 if value else 0.0))
+        self.clarity_toggle.toggled.connect(
+            lambda value: self.win.set_feature(
+                FAMILY_RECORDING, F.REC_NOISE_REDUCTION, 1.0 if value else 0.0
+            )
+        )
 
         level_row = QHBoxLayout()
         level_row.addWidget(_mini_label("Уровень"))
@@ -402,7 +419,7 @@ class RecordingPage(QWidget):
         name = self.mic_preset.itemData(index)
         if not name:
             return
-        for band, gain in zip(F.REC_MIC_EQ_BANDS, F.MIC_EQ_PRESETS[name]):
+        for band, gain in zip(F.REC_MIC_EQ_BANDS, F.MIC_EQ_PRESETS[name], strict=False):
             self.win.set_feature(FAMILY_RECORDING, band, gain)
         self.win.set_feature(FAMILY_RECORDING, F.REC_MIC_EQ_TOGGLE, 1.0)
         self.mic_eq_toggle.blockSignals(True)
@@ -556,7 +573,7 @@ class MixerPage(QWidget):
             for control in controls:
                 if control["kind"] == "playback":
                     row = _MixerRow(control, self.win, capture=False)
-                    self._rows[control["key"]] = row
+                    self._rows["playback:" + control["key"]] = row
                     self.playback_box.addWidget(row)
             if not self.playback_box.count():
                 self.playback_box.addWidget(_LabelMuted("Нет регулируемых выходов"))
@@ -565,7 +582,7 @@ class MixerPage(QWidget):
             for control in controls:
                 if control["kind"] == "capture":
                     row = _MixerRow(control, self.win, capture=True)
-                    self._rows[control["key"]] = row
+                    self._rows["capture:" + control["key"]] = row
                     self.capture_box.addWidget(row)
             if not self.capture_box.count():
                 self.capture_box.addWidget(_LabelMuted("Нет регулируемых входов"))
@@ -580,7 +597,7 @@ class MixerPage(QWidget):
                 self.selector_combo.blockSignals(False)
         else:
             for control in controls:
-                row = self._rows.get(control["key"])
+                row = self._rows.get(control["kind"] + ":" + control["key"])
                 if row is not None:
                     row.update(control)
             if selector and selector["index"] != self.selector_combo.currentIndex():
@@ -630,7 +647,10 @@ class LightingPage(QWidget):
         ):
             swatch = ColorButton(rgb)
             swatch.colorChanged.connect(
-                lambda value: (self.color.set_color(value), self.win.set_lighting_color(tuple(int(c) for c in value)))
+                lambda value: (
+                    self.color.set_color(value),
+                    self.win.set_lighting_color(tuple(int(c) for c in value)),
+                )
             )
             row.addWidget(swatch)
         row.addStretch(1)

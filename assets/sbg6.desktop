@@ -6,6 +6,6 @@ Comment=SBX, эквалайзер, микрофон и настройки Sound 
 Exec=@ROOT@/bin/g6 gui
 Icon=sbg6
 Terminal=false
-Categories=AudioVideo;Audio;Settings;
+Categories=Audio;Settings;
 Keywords=sound;blaster;g6;sbx;eq;audio;
 StartupWMClass=sbg6
