@@ -19,6 +19,7 @@ from .device import (
     Frame,
     G6Error,
 )
+from .i18n import tr
 
 CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "sbg6"
 PROFILE_DIR = CONFIG_DIR / "profiles"
@@ -203,7 +204,7 @@ def save_profile(name: str, state: State) -> Path:
 def load_profile(name: str) -> State:
     path = profile_path(name)
     if not path.exists():
-        raise FileNotFoundError(f"Профиль «{name}» не найден")
+        raise FileNotFoundError(tr("err.profile_missing", name=name))
     return State.from_dict(json.loads(path.read_text(encoding="utf-8")))
 
 

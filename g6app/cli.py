@@ -4,8 +4,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import shutil
+import subprocess
 import sys
+import tempfile
 import time
+from pathlib import Path
 
 from . import features as F
 from .device import (
@@ -322,6 +327,41 @@ def cmd_restore(args) -> int:
             time.sleep(2)
 
 
+UDEV_RULE = (
+    "# Sound BlasterX G6 (041e:3256) — доступ к вендорному HID-интерфейсу (1.4)\n"
+    'SUBSYSTEM=="hidraw", ATTRS{idVendor}=="041e", ATTRS{idProduct}=="3256", '
+    'TAG+="uaccess", MODE="0660"\n'
+)
+UDEV_TARGET = "/etc/udev/rules.d/70-sbg6.rules"
+
+
+def cmd_setup(args) -> int:
+    """Install the udev rule (needs root; uses pkexec or sudo)."""
+    commands = [
+        ["install", "-m", "644", None, UDEV_TARGET],
+        ["udevadm", "control", "--reload-rules"],
+        ["udevadm", "trigger", "--subsystem-match", "hidraw", "--action", "change"],
+    ]
+    if os.geteuid() == 0:
+        Path(UDEV_TARGET).write_text(UDEV_RULE, encoding="utf-8")
+        prefix: list[str] = []
+    else:
+        helper = "pkexec" if shutil.which("pkexec") else "sudo"
+        prefix = [helper]
+        handle = tempfile.NamedTemporaryFile("w", suffix=".rules", delete=False, encoding="utf-8")
+        handle.write(UDEV_RULE)
+        handle.close()
+        commands[0][3] = handle.name
+    for command in commands:
+        result = subprocess.run(prefix + [part for part in command if part])
+        if result.returncode != 0:
+            print("Не удалось установить правило udev", file=sys.stderr)
+            return result.returncode
+    print(f"Правило установлено: {UDEV_TARGET}")
+    print("Переподключите G6 (или перезайдите в сессию), затем проверьте: g6 info")
+    return 0
+
+
 def cmd_gui(args) -> int:
     from .gui.app import main as gui_main
 
@@ -427,6 +467,9 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("raw", help="отправить произвольный кадр (отладка)")
     p.add_argument("hex")
     p.set_defaults(func=cmd_raw)
+
+    p = sub.add_parser("setup", help="установить правило udev (pkexec/sudo)")
+    p.set_defaults(func=cmd_setup)
 
     p = sub.add_parser("gui", help="открыть окно приложения")
     p.set_defaults(func=cmd_gui)

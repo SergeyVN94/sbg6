@@ -24,6 +24,7 @@ from ..device import (
     OUTPUT_HEADPHONES,
     OUTPUT_SPEAKERS,
 )
+from ..i18n import LANGUAGES, get_language, tr
 from ..state import State
 from .widgets import (
     Card,
@@ -124,7 +125,7 @@ class PlaybackPage(QWidget):
         body, layout = _page()
 
         # -- SBX -----------------------------------------------------------
-        sbx_card = Card("SBX", "Звуковые эффекты Creative для игр и музыки")
+        sbx_card = Card(tr("sbx.title"), tr("sbx.subtitle"))
         self.sbx_toggle = ToggleSwitch()
         sbx_card.header.addWidget(self.sbx_toggle)
         self.sbx_toggle.toggled.connect(lambda value: self.win.set_sbx(value))
@@ -132,8 +133,8 @@ class PlaybackPage(QWidget):
         grid = QGridLayout()
         grid.setSpacing(8)
         self.effects: dict[str, EffectCard] = {}
-        for index, (key, title, toggle, level, description) in enumerate(F.EFFECTS):
-            card = EffectCard(key, title, description)
+        for index, (key, _title, toggle, level, _description) in enumerate(F.EFFECTS):
+            card = EffectCard(key, tr(f"fx.{key}.title"), tr(f"fx.{key}.desc"))
             card.toggled.connect(lambda value, k=key, t=toggle: self._effect_toggled(k, t, value))
             card.levelChanged.connect(
                 lambda value, fid=level: self.win.set_feature(FAMILY_PLAYBACK, fid, value)
@@ -142,12 +143,12 @@ class PlaybackPage(QWidget):
             self.effects[key] = card
 
         surround = self.effects["surround"]
-        surround.extra_layout.addWidget(_mini_label("Дистанция"))
+        surround.extra_layout.addWidget(_mini_label(tr("fx.distance")))
         self.distance = ValueSlider(
             F.SURROUND_DISTANCE_MIN,
             F.SURROUND_DISTANCE_MAX,
             F.SURROUND_DISTANCE_STEP,
-            fmt=lambda value: f"{value:.0f} см",
+            fmt=lambda value: f"{value:.0f} {tr('unit.cm')}",
         )
         self.distance.valueChanged.connect(
             lambda value: self.win.set_feature(FAMILY_PLAYBACK, F.PLAYBACK_SURROUND_DISTANCE, value)
@@ -155,9 +156,9 @@ class PlaybackPage(QWidget):
         surround.extra_layout.addWidget(self.distance, 1)
 
         smart = self.effects["smartvol"]
-        smart.extra_layout.addWidget(_mini_label("Режим"))
+        smart.extra_layout.addWidget(_mini_label(tr("fx.mode")))
         self.smart_mode = QComboBox()
-        self.smart_mode.addItems(F.SMART_VOLUME_MODES)
+        self.smart_mode.addItems([tr("smart.normal"), tr("smart.loud"), tr("smart.night")])
         self.smart_mode.currentIndexChanged.connect(
             lambda index: self.win.set_feature(FAMILY_PLAYBACK, F.PLAYBACK_SMARTVOL_MODE, float(index))
         )
@@ -166,7 +167,7 @@ class PlaybackPage(QWidget):
         sbx_card.add_layout(grid)
 
         # -- equalizer -----------------------------------------------------
-        eq_card = Card("Эквалайзер", "10 полос, ±12 дБ · тяните точки, двойной клик — сброс")
+        eq_card = Card(tr("eq.title"), tr("eq.subtitle"))
         self.eq_toggle = ToggleSwitch()
         eq_card.header.addWidget(self.eq_toggle)
         self.eq_toggle.toggled.connect(
@@ -181,21 +182,26 @@ class PlaybackPage(QWidget):
         controls = QHBoxLayout()
         controls.setSpacing(10)
         self.preset = QComboBox()
-        self.preset.addItem("Пресеты…", None)
+        self.preset.addItem(tr("eq.presets"), None)
         for preset in F.EQ_PRESETS:
-            self.preset.addItem(preset.title, preset.name)
+            self.preset.addItem(tr(f"preset.{preset.name}"), preset.name)
         self.preset.currentIndexChanged.connect(self._preset_selected)
         controls.addWidget(self.preset, 1)
 
-        reset = QPushButton("Сбросить")
+        reset = QPushButton(tr("eq.reset"))
         reset.setObjectName("ghost")
         reset.clicked.connect(self._reset_eq)
         controls.addWidget(reset)
         eq_card.add_layout(controls)
 
         preamp_row = QHBoxLayout()
-        preamp_row.addWidget(_mini_label("Pre-amp"))
-        self.preamp = ValueSlider(F.PREAMP_MIN, F.PREAMP_MAX, F.PREAMP_STEP, fmt=lambda v: f"{v:+.1f} дБ")
+        preamp_row.addWidget(_mini_label(tr("eq.preamp")))
+        self.preamp = ValueSlider(
+            F.PREAMP_MIN,
+            F.PREAMP_MAX,
+            F.PREAMP_STEP,
+            fmt=lambda v: f"{v:+.1f} {tr('unit.db')}",
+        )
         self.preamp.valueChanged.connect(
             lambda value: self.win.set_feature(FAMILY_PLAYBACK, F.PLAYBACK_EQ_PREAMP, value)
         )
@@ -204,11 +210,11 @@ class PlaybackPage(QWidget):
         eq_card.add(self.curve)
 
         # -- scout ---------------------------------------------------------
-        scout_card = Card("Scout Mode", "Усиливает шаги и выстрелы, убирая лишний бас")
+        scout_card = Card(tr("scout.title"), tr("scout.subtitle"))
         self.scout_toggle = ToggleSwitch()
         scout_card.header.addWidget(self.scout_toggle)
         self.scout_toggle.toggled.connect(lambda value: self.win.set_scout(value))
-        scout_note = QLabel("Scout Mode и SBX взаимоисключающие — включение одного выключает другое.")
+        scout_note = QLabel(tr("scout.note"))
         scout_note.setObjectName("dim")
         scout_note.setWordWrap(True)
         scout_card.add(scout_note)
@@ -352,7 +358,7 @@ class RecordingPage(QWidget):
         self.win = window
         body, layout = _page()
 
-        clarity = Card("Voice Clarity", "Шумоподавление и чистый голос в микрофоне")
+        clarity = Card(tr("rec.clarity.title"), tr("rec.clarity.subtitle"))
         self.clarity_toggle = ToggleSwitch()
         clarity.header.addWidget(self.clarity_toggle)
         self.clarity_toggle.toggled.connect(
@@ -362,7 +368,7 @@ class RecordingPage(QWidget):
         )
 
         level_row = QHBoxLayout()
-        level_row.addWidget(_mini_label("Уровень"))
+        level_row.addWidget(_mini_label(tr("rec.level")))
         self.noise_level = ValueSlider(
             0.0, 0.5, 0.005, fmt=lambda v: f"{round(v * 200)}%"
         )
@@ -372,37 +378,35 @@ class RecordingPage(QWidget):
         level_row.addWidget(self.noise_level, 1)
         clarity.add_layout(level_row)
 
-        self.aec = QCheckBox("Эхоподавление (AEC)")
+        self.aec = QCheckBox(tr("rec.aec"))
         self.aec.toggled.connect(
             lambda value: self.win.set_feature(FAMILY_RECORDING, F.REC_AEC, 1.0 if value else 0.0)
         )
         clarity.add(self.aec)
 
-        self.rec_smart = QCheckBox("Smart Volume для записи")
+        self.rec_smart = QCheckBox(tr("rec.smart"))
         self.rec_smart.toggled.connect(
             lambda value: self.win.set_feature(FAMILY_RECORDING, F.REC_SMART_VOLUME, 1.0 if value else 0.0)
         )
         clarity.add(self.rec_smart)
 
-        boost_card = Card("Усиление микрофона", "Аппаратный буст входа External Mic")
-        self.boost = SegmentedControl([(db, f"+{db} дБ") for db in F.MIC_BOOST_VALUES])
+        boost_card = Card(tr("mic.boost.title"), tr("mic.boost.subtitle"))
+        self.boost = SegmentedControl([(db, f"+{db} {tr('unit.db')}") for db in F.MIC_BOOST_VALUES])
         self.boost.changed.connect(lambda db: self.win.set_mic_boost(int(db)))
         boost_card.add(self.boost)
-        boost_hint = QLabel(
-            "Буст добавляет усиление до АЦП: для тихого динамического микрофона обычно достаточно +10…+20 дБ."
-        )
+        boost_hint = QLabel(tr("mic.boost.hint"))
         boost_hint.setObjectName("dim")
         boost_hint.setWordWrap(True)
         boost_card.add(boost_hint)
 
-        eq_card = Card("Микрофонный эквалайзер", "8 полос, пресеты из Sound Blaster Command")
+        eq_card = Card(tr("mic.eq.title"), tr("mic.eq.subtitle"))
         self.mic_eq_toggle = ToggleSwitch()
         eq_card.header.addWidget(self.mic_eq_toggle)
         self.mic_eq_toggle.toggled.connect(
             lambda value: self.win.set_feature(FAMILY_RECORDING, F.REC_MIC_EQ_TOGGLE, 1.0 if value else 0.0)
         )
         self.mic_preset = QComboBox()
-        self.mic_preset.addItem("Пресеты…", None)
+        self.mic_preset.addItem(tr("rec.presets"), None)
         for name in F.MIC_EQ_PRESETS:
             self.mic_preset.addItem(name, name)
         self.mic_preset.currentIndexChanged.connect(self._mic_preset)
@@ -497,7 +501,7 @@ class _MixerRow(QWidget):
             self.mute.setObjectName("ghost")
             self.mute.setCheckable(True)
             self.mute.setFixedWidth(30)
-            self.mute.setToolTip("Выключить звук")
+            self.mute.setToolTip(tr("mixer.mute"))
             self.mute.setChecked(control.get("muted", False))
             self.mute.clicked.connect(self._mute)
             layout.addWidget(self.mute)
@@ -523,9 +527,9 @@ class MixerPage(QWidget):
         super().__init__()
         self.win = window
         body, self.layout = _page()
-        self.playback_card = Card("Воспроизведение", "Громкость выходов и мониторинга входов")
-        self.capture_card = Card("Запись", "Источник и громкость захвата")
-        self.selector_card = Card("Источник записи", "Какой вход слушает система")
+        self.playback_card = Card(tr("mixer.playback.title"), tr("mixer.playback.subtitle"))
+        self.capture_card = Card(tr("mixer.capture.title"), tr("mixer.capture.subtitle"))
+        self.selector_card = Card(tr("mixer.source.title"), tr("mixer.source.subtitle"))
 
         self.playback_box = QVBoxLayout()
         self.playback_box.setSpacing(8)
@@ -539,7 +543,7 @@ class MixerPage(QWidget):
         self.selector_combo.currentIndexChanged.connect(self._selector_changed)
         self.selector_card.add(self.selector_combo)
 
-        self.empty = QLabel("Микшер недоступен: ALSA-карта G6 не найдена.")
+        self.empty = QLabel(tr("mixer.unavailable"))
         self.empty.setObjectName("muted")
 
         self.layout.addWidget(self.selector_card)
@@ -577,7 +581,7 @@ class MixerPage(QWidget):
                     self._rows["playback:" + control["key"]] = row
                     self.playback_box.addWidget(row)
             if not self.playback_box.count():
-                self.playback_box.addWidget(_LabelMuted("Нет регулируемых выходов"))
+                self.playback_box.addWidget(_LabelMuted(tr("mixer.no_playback")))
 
             _clear(self.capture_box)
             for control in controls:
@@ -586,7 +590,7 @@ class MixerPage(QWidget):
                     self._rows["capture:" + control["key"]] = row
                     self.capture_box.addWidget(row)
             if not self.capture_box.count():
-                self.capture_box.addWidget(_LabelMuted("Нет регулируемых входов"))
+                self.capture_box.addWidget(_LabelMuted(tr("mixer.no_capture")))
 
             if selector:
                 self._selector_key = selector["key"]
@@ -631,16 +635,16 @@ class LightingPage(QWidget):
         self.win = window
         body, layout = _page()
 
-        card = Card("Подсветка", "Кольцо вокруг регулятора громкости")
+        card = Card(tr("light.title"), tr("light.subtitle"))
         self.toggle = ToggleSwitch()
         card.header.addWidget(self.toggle)
         self.toggle.toggled.connect(lambda value: self.win.set_lighting_enabled(value))
 
         custom_row = QHBoxLayout()
         custom_row.setSpacing(10)
-        custom_row.addWidget(_mini_label("Свой цвет"))
+        custom_row.addWidget(_mini_label(tr("light.custom")))
         self.color = ColorButton()
-        self.color.setToolTip("Открыть палитру и выбрать произвольный цвет")
+        self.color.setToolTip(tr("light.custom_tip"))
         self.color.colorChanged.connect(self._apply_custom)
         custom_row.addWidget(self.color)
         self.hex_label = QLabel("")
@@ -652,7 +656,7 @@ class LightingPage(QWidget):
 
         presets_row = QHBoxLayout()
         presets_row.setSpacing(10)
-        presets_row.addWidget(_mini_label("Готовые"))
+        presets_row.addWidget(_mini_label(tr("light.presets")))
         self.swatches: list[ColorSwatch] = []
         for rgb in (
             (255, 40, 40), (255, 140, 0), (255, 220, 0), (60, 220, 120),
@@ -665,10 +669,7 @@ class LightingPage(QWidget):
         presets_row.addStretch(1)
         card.add_layout(presets_row)
 
-        note = QLabel(
-            "G6 поддерживает статический цвет и включение/выключение кольца. "
-            "Пульсация и «дыхание» в прошивке устройства не реализованы."
-        )
+        note = QLabel(tr("light.note"))
         note.setObjectName("dim")
         note.setWordWrap(True)
         card.add(note)
@@ -709,45 +710,43 @@ class SettingsPage(QWidget):
         self.win = window
         body, layout = _page()
 
-        output_card = Card("Выход", "Куда G6 подаёт звук")
-        self.output = SegmentedControl([(OUTPUT_HEADPHONES, "Наушники"), (OUTPUT_SPEAKERS, "Колонки")])
+        output_card = Card(tr("set.output.title"), tr("set.output.subtitle"))
+        self.output = SegmentedControl(
+            [
+                (OUTPUT_HEADPHONES, tr("header.output.headphones")),
+                (OUTPUT_SPEAKERS, tr("header.output.speakers")),
+            ]
+        )
         self.output.changed.connect(lambda mode: self.win.set_output(int(mode)))
         output_card.add(self.output)
-        out_note = QLabel(
-            "Переключение меняет физический выход на самой плате. Громкость Windows/ PipeWire "
-            "для наушников и колонок общая."
-        )
+        out_note = QLabel(tr("set.output.note"))
         out_note.setObjectName("dim")
         out_note.setWordWrap(True)
         output_card.add(out_note)
 
-        direct_card = Card("Direct Mode", "Обход всей обработки SBX для бит-перфект вывода")
+        direct_card = Card(tr("set.direct.title"), tr("set.direct.subtitle"))
         self.direct = ToggleSwitch()
         direct_card.header.addWidget(self.direct)
         self.direct.toggled.connect(lambda value: self.win.set_direct(value))
-        direct_note = QLabel(
-            "В Direct Mode DSP отключён: эквалайзер и эффекты не работают, но частота "
-            "дискретизации и формат передаются в ЦАП без обработки. Включение меняет "
-            "клокировку USB, возможен короткий щелчок."
-        )
+        direct_note = QLabel(tr("set.direct.note"))
         direct_note.setObjectName("dim")
         direct_note.setWordWrap(True)
         direct_card.add(direct_note)
 
-        dac_card = Card("Цифровой фильтр ЦАП", "CS43131: характер среза на ультравысоких частотах")
+        dac_card = Card(tr("set.dac.title"), tr("set.dac.subtitle"))
         self.dac = QComboBox()
         for value, title in F.DAC_FILTERS:
             self.dac.addItem(title, value)
         self.dac.currentIndexChanged.connect(self._dac_changed)
         dac_card.add(self.dac)
 
-        profile_card = Card("Профили", "Сохраняйте наборы настроек и переключайте их одним щелчком")
+        profile_card = Card(tr("set.profiles.title"), tr("set.profiles.subtitle"))
         row = QHBoxLayout()
         row.setSpacing(8)
         self.profile_combo = QComboBox()
         self.profile_combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         row.addWidget(self.profile_combo, 1)
-        load = QPushButton("Загрузить")
+        load = QPushButton(tr("set.profiles.load"))
         load.setObjectName("primary")
         load.clicked.connect(self._load_profile)
         row.addWidget(load)
@@ -757,42 +756,58 @@ class SettingsPage(QWidget):
         row2.setSpacing(8)
         self.profile_name = QComboBox()
         self.profile_name.setEditable(True)
-        self.profile_name.lineEdit().setPlaceholderText("Имя нового профиля")
+        self.profile_name.lineEdit().setPlaceholderText(tr("set.profiles.placeholder"))
         row2.addWidget(self.profile_name, 1)
-        save = QPushButton("Сохранить текущее")
+        save = QPushButton(tr("set.profiles.save"))
         save.clicked.connect(self._save_profile)
         row2.addWidget(save)
-        delete = QPushButton("Удалить")
+        delete = QPushButton(tr("set.profiles.delete"))
         delete.setObjectName("ghost")
         delete.clicked.connect(self._delete_profile)
         row2.addWidget(delete)
         profile_card.add_layout(row2)
 
-        self.autostart = QCheckBox("Восстанавливать последнее состояние при входе в систему")
+        self.autostart = QCheckBox(tr("set.autostart"))
         self.autostart.toggled.connect(self.win.set_autostart)
         profile_card.add(self.autostart)
 
-        info_card = Card("Устройство")
+        info_card = Card(tr("set.device.title"))
         self.info = QLabel("…")
         self.info.setObjectName("muted")
         self.info.setWordWrap(True)
         self.info.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         info_card.add(self.info)
-        refresh = QPushButton("Обновить")
+        refresh = QPushButton(tr("header.refresh"))
         refresh.setObjectName("ghost")
         refresh.clicked.connect(self.win.refresh_state)
         info_card.header.addWidget(refresh)
+
+        language_card = Card(tr("set.language.title"), tr("set.language.subtitle"))
+        self.language = QComboBox()
+        for code, name in LANGUAGES:
+            self.language.addItem(name, code)
+        current = self.language.findData(get_language())
+        if current >= 0:
+            self.language.setCurrentIndex(current)
+        self.language.currentIndexChanged.connect(self._language_changed)
+        language_card.add(self.language)
 
         layout.addWidget(output_card)
         layout.addWidget(direct_card)
         layout.addWidget(dac_card)
         layout.addWidget(profile_card)
+        layout.addWidget(language_card)
         layout.addWidget(info_card)
         layout.addStretch(1)
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.addWidget(_scroll(body))
         self.reload_profiles()
+
+    def _language_changed(self, index: int) -> None:
+        code = self.language.itemData(index)
+        if code:
+            self.win.change_language(code)
 
     def _dac_changed(self, index: int) -> None:
         value = self.dac.itemData(index)
@@ -824,7 +839,7 @@ class SettingsPage(QWidget):
         self.profile_combo.blockSignals(True)
         self.profile_combo.clear()
         if not names:
-            self.profile_combo.addItem("Профилей пока нет", None)
+            self.profile_combo.addItem(tr("set.profiles.empty"), None)
             self.profile_combo.setEnabled(False)
         else:
             self.profile_combo.setEnabled(True)
@@ -854,11 +869,11 @@ class SettingsPage(QWidget):
             self.direct.blockSignals(True)
             self.direct.setChecked(state.direct)
             self.direct.blockSignals(False)
-            info = f"Прошивка: {state.firmware or '?'}\n"
+            lines = [tr("set.device.firmware", firmware=state.firmware or "?")]
             if state.hardware_id:
-                info += f"Hardware ID: {state.hardware_id:#04x}\n"
-            info += "Интерфейс: HID (hidraw), без USB-reset\n"
-            info += "Права доступа: правило packaging/70-sbg6.rules"
+                lines.append(tr("set.device.hwid", hw=f"{state.hardware_id:#04x}"))
+            lines.extend([tr("set.device.iface"), tr("set.device.rules")])
+            info = "\n".join(lines)
             self.info.setText(info)
 
 

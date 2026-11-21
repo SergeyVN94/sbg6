@@ -2,3 +2,7 @@ __pycache__/
 *.py[cod]
 .ruff_cache/
 *.log
+build/
+dist/
+*.deb
+*.AppImage

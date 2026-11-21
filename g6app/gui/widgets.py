@@ -37,6 +37,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from ..i18n import tr
 from . import theme
 
 
@@ -238,6 +239,9 @@ class SegmentedControl(QFrame):
             button.setObjectName("seg")
             button.setCheckable(True)
             button.setCursor(Qt.CursorShape.PointingHandCursor)
+            # QSS padding is not always part of the first sizeHint, which can
+            # clip wider labels; reserve room for the text plus padding.
+            button.setMinimumWidth(button.fontMetrics().horizontalAdvance(label) + 46)
             self._group.addButton(button)
             layout.addWidget(button)
             self._buttons[value] = button
@@ -329,7 +333,7 @@ class ColorButton(QPushButton):
 
     def _pick(self) -> None:
         r, g, b = self._color
-        chosen = QColorDialog.getColor(QColor(r, g, b), self, "Цвет подсветки")
+        chosen = QColorDialog.getColor(QColor(r, g, b), self, tr("color.dialog"))
         if chosen.isValid():
             self.set_color((chosen.red(), chosen.green(), chosen.blue()), emit=True)
 

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from PySide6.QtGui import QColor, QFont, QPalette
 
+from ..i18n import get_language
+
 BG = "#101317"
 BG_ALT = "#0b0d10"
 CARD = "#181d24"
@@ -42,7 +44,13 @@ def apply(app) -> None:
     app.setPalette(palette)
 
     font = QFont()
-    font.setFamilies(["Inter", "Noto Sans", "DejaVu Sans"])
+    if get_language().startswith("zh"):
+        # Qt's per-glyph fallback is unreliable for CJK here; the Droid
+        # fallback face covers both Han and Latin/Cyrillic, so lead with it.
+        families = ["Droid Sans Fallback"]
+    else:
+        families = ["Inter", "Noto Sans", "DejaVu Sans"]
+    font.setFamilies(families)
     font.setPointSize(10)
     app.setFont(font)
     app.setStyleSheet(STYLESHEET)

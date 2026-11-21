@@ -36,6 +36,7 @@ from ..device import (
     G6Error,
     find_card_index,
 )
+from ..i18n import get_language, set_language, tr
 from ..mixer import Mixer
 from ..state import (
     Controller,
@@ -57,7 +58,23 @@ from .pages import LightingPage, MixerPage, PlaybackPage, RecordingPage, Setting
 from .widgets import SegmentedControl
 
 ROOT = Path(__file__).resolve().parent.parent.parent
-ICON_PATH = ROOT / "assets" / "sbg6.svg"
+
+
+def asset_path(name: str) -> Path:
+    """Find a bundled asset both in the source tree and in frozen builds."""
+    candidates: list[Path] = []
+    if getattr(sys, "_MEIPASS", None):
+        candidates.append(Path(sys._MEIPASS))
+    candidates.append(ROOT)
+    candidates.append(Path(sys.executable).resolve().parent)
+    for base in candidates:
+        path = base / "assets" / name
+        if path.exists():
+            return path
+    return ROOT / "assets" / name
+
+
+ICON_PATH = asset_path("sbg6.svg")
 
 MIXER_PLAYBACK = ("Speaker", "Line In", "External Mic", "S/PDIF In")
 MIXER_CAPTURE = ("Line In", "External Mic", "S/PDIF In", "What U Hear")
@@ -111,6 +128,20 @@ class Worker(threading.Thread):
 
     def submit(self, fn) -> None:
         self.queue.put(fn)
+
+    def shutdown(self) -> None:
+        if self.controller is not None:
+            try:
+                self.controller.close()
+            except Exception:
+                pass
+            self.controller = None
+        if self.mixer is not None:
+            try:
+                self.mixer.close()
+            except Exception:
+                pass
+            self.mixer = None
 
     def run(self) -> None:
         while True:
@@ -291,7 +322,7 @@ class MainWindow(QMainWindow):
         title.setObjectName("heroTitle")
         title.setStyleSheet("font-size: 13pt; font-weight: 700;")
         side.addWidget(title)
-        subtitle = QLabel("G6 · Linux control")
+        subtitle = QLabel(tr("app.tagline"))
         subtitle.setObjectName("muted")
         side.addWidget(subtitle)
         side.addSpacing(20)
@@ -305,11 +336,11 @@ class MainWindow(QMainWindow):
         self.page_lighting = LightingPage(self)
         self.page_settings = SettingsPage(self)
         entries = (
-            ("Воспроизведение", self.page_playback),
-            ("Запись", self.page_recording),
-            ("Микшер", self.page_mixer),
-            ("Подсветка", self.page_lighting),
-            ("Настройки", self.page_settings),
+            (tr("nav.playback"), self.page_playback),
+            (tr("nav.recording"), self.page_recording),
+            (tr("nav.mixer"), self.page_mixer),
+            (tr("nav.lighting"), self.page_lighting),
+            (tr("nav.settings"), self.page_settings),
         )
         for index, (label, page) in enumerate(entries):
             button = QPushButton(label)
@@ -323,7 +354,7 @@ class MainWindow(QMainWindow):
         self.nav_group.idClicked.connect(self.pages.setCurrentIndex)
         side.addStretch(1)
 
-        self.status_dot = QLabel("●  нет устройства")
+        self.status_dot = QLabel(f"●  {tr('status.disconnected')}")
         self.status_dot.setObjectName("muted")
         side.addWidget(self.status_dot)
         version = QLabel("v0.1 · hidraw")
@@ -350,19 +381,22 @@ class MainWindow(QMainWindow):
         self.device_title = QLabel("Sound BlasterX G6")
         self.device_title.setObjectName("heroTitle")
         titles.addWidget(self.device_title)
-        self.device_sub = QLabel("Поиск устройства…")
+        self.device_sub = QLabel(tr("status.searching"))
         self.device_sub.setObjectName("muted")
         titles.addWidget(self.device_sub)
         head.addLayout(titles)
         head.addStretch(1)
 
         self.output_switch = SegmentedControl(
-            [(OUTPUT_HEADPHONES, "Наушники"), (OUTPUT_SPEAKERS, "Колонки")]
+            [
+                (OUTPUT_HEADPHONES, tr("header.output.headphones")),
+                (OUTPUT_SPEAKERS, tr("header.output.speakers")),
+            ]
         )
         self.output_switch.changed.connect(lambda mode: self.set_output(int(mode)))
         head.addWidget(self.output_switch)
 
-        refresh = QPushButton("Обновить")
+        refresh = QPushButton(tr("header.refresh"))
         refresh.setObjectName("ghost")
         refresh.clicked.connect(self.refresh_state)
         head.addWidget(refresh)
@@ -377,7 +411,7 @@ class MainWindow(QMainWindow):
         self.statusBar().setStyleSheet(
             f"QStatusBar {{ background: {theme.BG_ALT}; color: {theme.MUTED}; }}"
         )
-        self.status(self.tr("Готово"))
+        self.status(tr("status.ready"))
 
         self._build_tray()
         QShortcut(QKeySequence.StandardKey.Quit, self, activated=self.quit)
@@ -386,12 +420,12 @@ class MainWindow(QMainWindow):
         self.tray = QSystemTrayIcon(app_icon(), self)
         self.tray.setToolTip("Sound Blaster G6")
         menu = QMenu()
-        menu.addAction("Открыть окно", self._show_window)
+        menu.addAction(tr("tray.open"), self._show_window)
         menu.addSeparator()
-        self.tray_output = menu.addMenu("Выход")
-        self.tray_output_headphones = self.tray_output.addAction("Наушники")
+        self.tray_output = menu.addMenu(tr("tray.output"))
+        self.tray_output_headphones = self.tray_output.addAction(tr("header.output.headphones"))
         self.tray_output_headphones.triggered.connect(lambda: self.set_output(OUTPUT_HEADPHONES))
-        self.tray_output_speakers = self.tray_output.addAction("Колонки")
+        self.tray_output_speakers = self.tray_output.addAction(tr("header.output.speakers"))
         self.tray_output_speakers.triggered.connect(lambda: self.set_output(OUTPUT_SPEAKERS))
         self.tray_sbx = menu.addAction("SBX")
         self.tray_sbx.setCheckable(True)
@@ -399,14 +433,14 @@ class MainWindow(QMainWindow):
         self.tray_scout = menu.addAction("Scout Mode")
         self.tray_scout.setCheckable(True)
         self.tray_scout.triggered.connect(self.set_scout)
-        self.tray_eq = menu.addAction("Эквалайзер")
+        self.tray_eq = menu.addAction(tr("tray.eq"))
         self.tray_eq.setCheckable(True)
         self.tray_eq.triggered.connect(
             lambda checked: self.set_feature(FAMILY_PLAYBACK, F.PLAYBACK_EQ_TOGGLE, 1.0 if checked else 0.0)
         )
-        self.tray_profiles = menu.addMenu("Профили")
+        self.tray_profiles = menu.addMenu(tr("tray.profiles"))
         menu.addSeparator()
-        menu.addAction("Выход", self.quit)
+        menu.addAction(tr("tray.quit"), self.quit)
         self.tray.setContextMenu(menu)
         self.tray.activated.connect(self._tray_clicked)
         self.tray.show()
@@ -416,7 +450,7 @@ class MainWindow(QMainWindow):
         self.tray_profiles.clear()
         names = list_profiles()
         if not names:
-            action = self.tray_profiles.addAction("Нет профилей")
+            action = self.tray_profiles.addAction(tr("tray.no_profiles"))
             action.setEnabled(False)
             return
         for name in names:
@@ -436,14 +470,15 @@ class MainWindow(QMainWindow):
         if self.tray.isVisible() and QSystemTrayIcon.isSystemTrayAvailable():
             event.ignore()
             self.hide()
-            self.status("Свёрнуто в трей")
+            self.status(tr("status.minimized"))
         else:
             self.quit()
 
     def quit(self) -> None:
         self._save_last()
+        self.worker.submit(self.worker.shutdown)
         self.worker.submit(None)
-        self.worker.join(timeout=1.0)
+        self.worker.join(timeout=2.0)
         QApplication.quit()
 
     # -- connection --------------------------------------------------------
@@ -454,14 +489,14 @@ class MainWindow(QMainWindow):
     def _on_connected(self, connected: bool) -> None:
         self._connected = connected
         if connected:
-            self.status_dot.setText("●  подключено")
+            self.status_dot.setText(f"●  {tr('status.connected')}")
             self.status_dot.setStyleSheet(
                 f"color: {theme.OK}; font-size: 9pt;"
             )
         else:
-            self.status_dot.setText("●  нет устройства")
+            self.status_dot.setText(f"●  {tr('status.disconnected')}")
             self.status_dot.setStyleSheet(f"color: {theme.ACCENT}; font-size: 9pt;")
-            self.device_sub.setText("Устройство не найдено — проверьте подключение")
+            self.device_sub.setText(tr("status.device_missing"))
 
     def _on_error(self, message: str) -> None:
         self.status(message, error=True)
@@ -494,9 +529,13 @@ class MainWindow(QMainWindow):
             self.state.lighting_color = tuple(event["color"])
         elif kind == "snapshot":
             self.state = event["state"]
+            output = (
+                tr("header.output.headphones")
+                if self.state.output == OUTPUT_HEADPHONES
+                else tr("header.output.speakers")
+            )
             self.device_sub.setText(
-                f"Прошивка {self.state.firmware or '?'} · выход: "
-                f"{'наушники' if self.state.output == OUTPUT_HEADPHONES else 'колонки'}"
+                tr("status.firmware_output", firmware=self.state.firmware or "?", output=output)
             )
             self.output_switch.set_value(self.state.output)
             save_last_state(self.state)
@@ -657,29 +696,29 @@ class MainWindow(QMainWindow):
         def job() -> None:
             controller = self.worker.controller
             if not controller:
-                raise G6Error("Устройство не подключено")
+                raise G6Error(tr("err.no_device"))
             save_profile_file(name, controller.refresh())
             self.bridge.event.emit({"type": "profiles"})
 
         self._submit(job)
-        self.status(f"Профиль «{name}» сохранён")
+        self.status(tr("status.profile_saved", name=name))
 
     def load_profile(self, name: str) -> None:
         def job() -> None:
             state = load_profile_file(name)
             controller = self.worker.controller
             if not controller:
-                raise G6Error("Устройство не подключено")
+                raise G6Error(tr("err.no_device"))
             controller.apply_profile(state)
 
         self._submit(job)
-        self.status(f"Профиль «{name}» загружен")
+        self.status(tr("status.profile_loaded", name=name))
 
     def delete_profile(self, name: str) -> None:
         delete_profile_file(name)
         self._reload_tray_profiles()
         self.page_settings.reload_profiles()
-        self.status(f"Профиль «{name}» удалён")
+        self.status(tr("status.profile_deleted", name=name))
 
     # -- autostart ---------------------------------------------------------
 
@@ -694,10 +733,7 @@ class MainWindow(QMainWindow):
                 timeout=10,
             )
             if result.returncode != 0:
-                self.status(
-                    "Юнит sbg6-restore.service не установлен — запустите ./install.sh",
-                    error=True,
-                )
+                self.status(tr("status.autostart_missing"), error=True)
                 return
             if enabled:
                 subprocess.run(
@@ -706,9 +742,9 @@ class MainWindow(QMainWindow):
                     capture_output=True,
                     timeout=10,
                 )
-            self.status("Автовосстановление включено" if enabled else "Автовосстановление выключено")
+            self.status(tr("status.autostart_on") if enabled else tr("status.autostart_off"))
         except (OSError, subprocess.SubprocessError) as exc:
-            self.status(f"systemctl: {exc}", error=True)
+            self.status(tr("status.systemctl", error=exc), error=True)
 
     def _sync_autostart(self) -> None:
         try:
@@ -725,6 +761,28 @@ class MainWindow(QMainWindow):
         self.page_settings.autostart.blockSignals(True)
         self.page_settings.autostart.setChecked(enabled)
         self.page_settings.autostart.blockSignals(False)
+
+    def change_language(self, code: str) -> None:
+        if code == get_language():
+            return
+        set_language(code)
+        QTimer.singleShot(120, self._rebuild_ui)
+
+    def _rebuild_ui(self) -> None:
+        """Recreate the window so every label is built in the new language."""
+        app = QApplication.instance()
+        theme.apply(app)
+        self._save_last()
+        self.retry_timer.stop()
+        self.tray.hide()
+        self.worker.submit(self.worker.shutdown)
+        self.worker.submit(None)
+        self.worker.join(timeout=2.0)
+        replacement = MainWindow()
+        replacement.show()
+        app._main_window = replacement
+        self.hide()
+        self.deleteLater()
 
     def _save_last(self) -> None:
         save_last_state(self.state)
@@ -754,6 +812,7 @@ def main(argv: list[str] | None = None) -> int:
     theme.apply(app)
     window = MainWindow()
     window.show()
+    app._main_window = window
     return app.exec()
 
 

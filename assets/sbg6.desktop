@@ -1,9 +1,11 @@
 [Desktop Entry]
 Type=Application
 Name=Sound Blaster G6
-GenericName=Аудиоконтроль Sound BlasterX G6
-Comment=SBX, эквалайзер, микрофон и настройки Sound BlasterX G6
-Exec=@ROOT@/bin/g6 gui
+GenericName=Sound BlasterX G6 audio control
+GenericName[ru]=Аудиоконтроль Sound BlasterX G6
+Comment=SBX effects, equalizer, microphone and hardware settings for the Sound BlasterX G6
+Comment[ru]=SBX, эквалайзер, микрофон и настройки Sound BlasterX G6
+Exec=@EXEC@
 Icon=sbg6
 Terminal=false
 Categories=Audio;Settings;

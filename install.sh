@@ -27,7 +27,7 @@ mkdir -p "${BIN_DIR}" "${APPS_DIR}" "${ICONS_DIR}" "${UNIT_DIR}"
 chmod +x "${ROOT}/bin/g6"
 ln -sf "${ROOT}/bin/g6" "${BIN_DIR}/g6"
 
-sed "s|@ROOT@|${ROOT}|g" "${ROOT}/assets/sbg6.desktop" > "${APPS_DIR}/sbg6.desktop"
+sed -e "s|@EXEC@|${ROOT}/bin/g6 gui|g" "${ROOT}/assets/sbg6.desktop" > "${APPS_DIR}/sbg6.desktop"
 cp "${ROOT}/assets/sbg6.svg" "${ICONS_DIR}/sbg6.svg"
 
 sed "s|@ROOT@|${ROOT}|g" "${ROOT}/systemd/sbg6-restore.service" > "${UNIT_DIR}/sbg6-restore.service"
