@@ -1,0 +1,4 @@
+# Sound BlasterX G6 (041e:3256) — доступ к вендорному HID-интерфейсу (1.4)
+# для пользователя, сидящего за компьютером. Ядро оставляет interrupt endpoint
+# опрошенным, поэтому libusb/USB-reset не нужен и звук не прерывается.
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="041e", ATTRS{idProduct}=="3256", TAG+="uaccess", MODE="0660"

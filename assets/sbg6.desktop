@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Sound Blaster G6
+GenericName=Аудиоконтроль Sound BlasterX G6
+Comment=SBX, эквалайзер, микрофон и настройки Sound BlasterX G6
+Exec=@ROOT@/bin/g6 gui
+Icon=sbg6
+Terminal=false
+Categories=AudioVideo;Audio;Settings;
+Keywords=sound;blaster;g6;sbx;eq;audio;
+StartupWMClass=sbg6

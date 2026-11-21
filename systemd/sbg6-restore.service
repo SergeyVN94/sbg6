@@ -1,0 +1,13 @@
+[Unit]
+Description=Sound BlasterX G6 — восстановление профиля
+After=pipewire.service wireplumber.service
+Wants=pipewire.service
+
+[Service]
+Type=oneshot
+ExecStart=@ROOT@/bin/g6 restore --wait 45
+RemainAfterExit=no
+# Устройство может появиться позже сессии, поэтому повторяем попытки внутри команды.
+
+[Install]
+WantedBy=default.target

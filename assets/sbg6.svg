@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#20242c"/>
+      <stop offset="1" stop-color="#0d1014"/>
+    </linearGradient>
+    <linearGradient id="wave" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4fd1c5"/>
+      <stop offset="1" stop-color="#3b82f6"/>
+    </linearGradient>
+  </defs>
+  <rect x="6" y="6" width="116" height="116" rx="26" fill="url(#bg)"/>
+  <rect x="6.75" y="6.75" width="114.5" height="114.5" rx="25.25" fill="none" stroke="#3a4250" stroke-width="1.5"/>
+  <g fill="url(#wave)">
+    <rect x="30" y="62" width="7" height="12" rx="3.5"/>
+    <rect x="42" y="52" width="7" height="32" rx="3.5"/>
+    <rect x="54" y="40" width="7" height="56" rx="3.5"/>
+    <rect x="66" y="48" width="7" height="40" rx="3.5"/>
+    <rect x="78" y="56" width="7" height="24" rx="3.5"/>
+    <rect x="90" y="64" width="7" height="8" rx="3.5"/>
+  </g>
+  <circle cx="34" cy="30" r="4" fill="#ef4444"/>
+  <text x="64" y="108" font-family="DejaVu Sans, sans-serif" font-size="20" font-weight="600" fill="#c9d4e0" text-anchor="middle">G6</text>
+</svg>
