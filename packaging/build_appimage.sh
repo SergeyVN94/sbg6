@@ -20,7 +20,7 @@ mkdir -p "${WORK}" "${DIST}" "${TOOLS}"
 echo "== PyInstaller"
 env -u APPIMAGE -u APPDIR -u OWD PYTHONPATH="${PYTHONPATH:-}" "${PYTHON}" -m "${PYINSTALLER_MODULE}" \
     --noconfirm --clean --windowed --name sbg6 \
-    --add-data "${ROOT}/assets/sbg6.svg:assets" \
+    --add-data "${ROOT}/assets:assets" \
     --paths "${ROOT}" \
     --hidden-import PySide6.QtWidgets --hidden-import PySide6.QtGui \
     --hidden-import PySide6.QtCore --hidden-import PySide6.QtSvg \

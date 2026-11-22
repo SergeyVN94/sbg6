@@ -28,6 +28,10 @@ from PySide6.QtWidgets import (
 )
 
 from .. import features as F
+from ..assets import asset_path
+from ..autostart import disable as autostart_disable
+from ..autostart import enable as autostart_enable
+from ..autostart import is_enabled as autostart_enabled
 from ..device import (
     FAMILY_PLAYBACK,
     G6,
@@ -58,20 +62,6 @@ from .pages import LightingPage, MixerPage, PlaybackPage, RecordingPage, Setting
 from .widgets import SegmentedControl
 
 ROOT = Path(__file__).resolve().parent.parent.parent
-
-
-def asset_path(name: str) -> Path:
-    """Find a bundled asset both in the source tree and in frozen builds."""
-    candidates: list[Path] = []
-    if getattr(sys, "_MEIPASS", None):
-        candidates.append(Path(sys._MEIPASS))
-    candidates.append(ROOT)
-    candidates.append(Path(sys.executable).resolve().parent)
-    for base in candidates:
-        path = base / "assets" / name
-        if path.exists():
-            return path
-    return ROOT / "assets" / name
 
 
 ICON_PATH = asset_path("sbg6.svg")
@@ -620,11 +610,11 @@ class MainWindow(QMainWindow):
         self.pending.clear()
         self.begin_edit(0.5)
         family = FAMILY_PLAYBACK
-        payload = list(zip(F.PLAYBACK_EQ_BANDS, bands, strict=False))
+        payload = [((family, band), gain) for band, gain in zip(F.PLAYBACK_EQ_BANDS, bands, strict=False)]
         if preamp is not None:
-            payload.insert(0, (F.PLAYBACK_EQ_PREAMP, preamp))
-        for feature, value in payload:
-            self.state.values[(family, feature)] = float(value)
+            payload.insert(0, ((family, F.PLAYBACK_EQ_PREAMP), preamp))
+        for (fam, feature), value in payload:
+            self.state.values[(fam, feature)] = float(value)
         self._submit(lambda: self._write_many(payload))
 
     def apply_preset(self, preset: F.EqPreset) -> None:
@@ -722,6 +712,18 @@ class MainWindow(QMainWindow):
 
     # -- autostart ---------------------------------------------------------
 
+    def set_autostart_app(self, enabled: bool) -> None:
+        try:
+            if enabled:
+                path = autostart_enable()
+                self.status(tr("status.autostart_app_on"))
+                self.status_dot.setToolTip(str(path))
+            else:
+                autostart_disable()
+                self.status(tr("status.autostart_app_off"))
+        except OSError as exc:
+            self.status(tr("status.autostart_app_failed", error=exc), error=True)
+
     def set_autostart(self, enabled: bool) -> None:
         action = "enable" if enabled else "disable"
         try:
@@ -761,6 +763,9 @@ class MainWindow(QMainWindow):
         self.page_settings.autostart.blockSignals(True)
         self.page_settings.autostart.setChecked(enabled)
         self.page_settings.autostart.blockSignals(False)
+        self.page_settings.autostart_app.blockSignals(True)
+        self.page_settings.autostart_app.setChecked(autostart_enabled())
+        self.page_settings.autostart_app.blockSignals(False)
 
     def change_language(self, code: str) -> None:
         if code == get_language():
@@ -803,6 +808,8 @@ def main(argv: list[str] | None = None) -> int:
             del argv[index : index + 2]
     if device:
         os.environ["G6_HIDRAW"] = device
+    tray_only = "--tray" in argv or "--hidden" in argv
+    argv = [arg for arg in argv if arg not in ("--tray", "--hidden")]
 
     app = QApplication(sys.argv[:1] + argv)
     app.setApplicationName("Sound Blaster G6")
@@ -811,7 +818,8 @@ def main(argv: list[str] | None = None) -> int:
     app.setWindowIcon(app_icon())
     theme.apply(app)
     window = MainWindow()
-    window.show()
+    if not tray_only or not QSystemTrayIcon.isSystemTrayAvailable():
+        window.show()
     app._main_window = window
     return app.exec()
 

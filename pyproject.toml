@@ -1,6 +1,6 @@
 [project]
 name = "sbg6"
-version = "0.1.0"
+version = "0.1.1"
 description = "Sound BlasterX G6 control app for Linux (SBX, EQ, mixer, lighting)"
 requires-python = ">=3.10"
 dependencies = []

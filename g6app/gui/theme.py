@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from PySide6.QtGui import QColor, QFont, QPalette
 
+from ..assets import asset_path
 from ..i18n import get_language
 
 BG = "#101317"
@@ -24,6 +25,9 @@ WARN = "#f0b429"
 #: Colour used for the equalizer curve gradient.
 CURVE_TOP = QColor("#4fd1c5")
 CURVE_BOTTOM = QColor("#3b82f6")
+
+
+CHECK_ICON = asset_path("check.svg").as_posix()
 
 
 def apply(app) -> None:
@@ -306,6 +310,7 @@ QCheckBox::indicator {{
 QCheckBox::indicator:checked {{
     background: {ACCENT};
     border-color: {ACCENT};
+    image: url("{CHECK_ICON}");
 }}
 
 QMenu {{

@@ -12,6 +12,7 @@ import tempfile
 import time
 from pathlib import Path
 
+from . import autostart
 from . import features as F
 from .device import (
     FAMILY_DECODER,
@@ -365,7 +366,26 @@ def cmd_setup(args) -> int:
 def cmd_gui(args) -> int:
     from .gui.app import main as gui_main
 
-    return gui_main(["--device", args.device] if args.device else [])
+    argv: list[str] = []
+    if args.device:
+        argv += ["--device", args.device]
+    if args.tray:
+        argv.append("--tray")
+    return gui_main(argv)
+
+
+def cmd_autostart(args) -> int:
+    if args.action == "status":
+        print(f"{'включён' if autostart.is_enabled() else 'выключен'}: {autostart.AUTOSTART_FILE}")
+        return 0
+    if args.action == "on":
+        path = autostart.enable()
+        print(f"Автозапуск включён: {path}")
+        print(f"Команда: {autostart.entry_text().splitlines()[5]}")
+        return 0
+    autostart.disable()
+    print("Автозапуск выключен")
+    return 0
 
 
 def cmd_raw(args) -> int:
@@ -472,7 +492,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.set_defaults(func=cmd_setup)
 
     p = sub.add_parser("gui", help="открыть окно приложения")
+    p.add_argument("--tray", action="store_true", help="запустить свёрнутым в трей")
     p.set_defaults(func=cmd_gui)
+
+    p = sub.add_parser("autostart", help="запуск приложения при входе в систему")
+    p.add_argument("action", choices=("on", "off", "status"))
+    p.set_defaults(func=cmd_autostart)
 
     return parser
 

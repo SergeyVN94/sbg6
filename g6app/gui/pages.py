@@ -767,9 +767,18 @@ class SettingsPage(QWidget):
         row2.addWidget(delete)
         profile_card.add_layout(row2)
 
+        self.autostart_app = QCheckBox(tr("set.autostart.app"))
+        self.autostart_app.toggled.connect(self.win.set_autostart_app)
+        profile_card.add(self.autostart_app)
+
         self.autostart = QCheckBox(tr("set.autostart"))
         self.autostart.toggled.connect(self.win.set_autostart)
         profile_card.add(self.autostart)
+
+        autostart_note = QLabel(tr("set.autostart.note"))
+        autostart_note.setObjectName("dim")
+        autostart_note.setWordWrap(True)
+        profile_card.add(autostart_note)
 
         info_card = Card(tr("set.device.title"))
         self.info = QLabel("…")

@@ -29,7 +29,7 @@ and ALSA.
 | **Recording** | Voice Clarity (noise reduction) with level, echo cancellation, Smart Volume, mic boost 0/10/20/30 dB, microphone EQ (11 presets from Windows) |
 | **Mixer** | Volume and mute for Speaker, Line In, External Mic, S/PDIF In (monitoring) and capture inputs, recording source selector (Line In / External Mic / S/PDIF / What U Hear) |
 | **Lighting** | Ring on/off, one-click preset colours, separate palette for a custom colour |
-| **Settings** | Headphones/Speakers output, Direct Mode, CS43131 DAC filter (5 options), profiles, restore on login, interface language |
+| **Settings** | Headphones/Speakers output, Direct Mode, CS43131 DAC filter (5 options), profiles, tray autostart, state restore, interface language |
 | **Languages** | Русский, English, Deutsch, Français, Español, Português (BR), 简体中文 — switchable in settings, applied instantly |
 | **Profiles** | Unlimited sets of settings, switching from the window or the tray, restore of the last state on login |
 | **Tray** | Output, SBX, Scout, equalizer, profiles |
@@ -51,11 +51,11 @@ a systemd user unit for restoring the profile.
 
 ### Debian / Ubuntu (.deb)
 
-Download `sbg6_0.1.0_all.deb` from [Releases](https://github.com/SergeyVN94/sbg6/releases)
+Download `sbg6_0.1.1_all.deb` from [Releases](https://github.com/SergeyVN94/sbg6/releases)
 and run:
 
 ```bash
-sudo apt install ./sbg6_0.1.0_all.deb
+sudo apt install ./sbg6_0.1.1_all.deb
 ```
 
 Requirements: `python3-pyside6.qtwidgets`, `libasound2`. The package installs the
@@ -68,14 +68,14 @@ systemctl --user enable --now sbg6-restore.service
 ### AppImage (any distribution)
 
 ```bash
-chmod +x sbg6-0.1.0-x86_64.AppImage
-./sbg6-0.1.0-x86_64.AppImage
+chmod +x sbg6-0.1.1-x86_64.AppImage
+./sbg6-0.1.1-x86_64.AppImage
 ```
 
 The AppImage bundles Python and PySide6. Install the udev rule once:
 
 ```bash
-./sbg6-0.1.0-x86_64.AppImage setup
+./sbg6-0.1.1-x86_64.AppImage setup
 ```
 
 (`pkexec` or `sudo` is used), then replug the G6. On systems without FUSE, run it
@@ -95,6 +95,7 @@ run `g6 setup` and replug the device.
 
 ```bash
 g6 gui                 # window
+g6 gui --tray          # start hidden in the tray (used by autostart)
 g6 gui --device /dev/hidraw7   # if autodetection fails
 ```
 
@@ -107,6 +108,7 @@ window hides it to the tray; use the tray menu or `Ctrl+Q` to quit.
 g6 status [--json]              # full state, machine-readable with --json
 g6 info                         # device and firmware
 g6 setup                        # install the udev rule
+g6 autostart on|off|status      # start the app on login
 g6 sbx on|off                   # SBX master switch
 g6 scout on|off                 # Scout Mode
 g6 direct on|off                # Direct Mode (USB re-enumerates, ~2 s)
@@ -134,14 +136,24 @@ g6 dump                         # snapshot of known registers (debug)
 g6 raw "5a 26 03 08 ff ff"      # send an arbitrary frame (debug)
 ```
 
-### Restore on login
+### Autostart and restore on login
+
+Settings has two independent options:
+
+* **Start the app when logging in** — writes `~/.config/autostart/sbg6.desktop`
+  and starts the window hidden in the tray (`g6 gui --tray`). For the AppImage the
+  entry points at the AppImage file itself; for the deb/source tree it points at
+  the `g6` launcher.
+* **Restore the last state when logging in** — enables the
+  `sbg6-restore.service` systemd unit, which runs `g6 restore --wait 45`, waits
+  for the G6 and applies the last state. No window is required.
+
+From a terminal:
 
 ```bash
+g6 autostart on|off|status
 systemctl --user enable sbg6-restore.service
 ```
-
-The unit runs `g6 restore --wait 45`, waits for the G6 and applies the last state
-saved by the window. The same option is a checkbox in Settings.
 
 ## How it works
 
